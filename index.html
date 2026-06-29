@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171717" />
+    <title>ポリゴン画像ジェネレーター</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <aside class="controls" aria-label="生成設定">
+          <div class="intro">
+            <h1>ポリゴン画像を生成</h1>
+            <p class="description">色や形を調整し、ポリゴンを個別の透過PNGで保存できます。</p>
+          </div>
+
+          <form id="controlsForm">
+            <fieldset>
+              <legend>画像サイズ</legend>
+              <div class="preset-row" role="group" aria-label="サイズプリセット">
+                <button type="button" class="preset active" data-size="1200,1200">正方形</button>
+                <button type="button" class="preset" data-size="1920,1080">横長</button>
+                <button type="button" class="preset" data-size="1080,1920">縦長</button>
+              </div>
+              <div class="input-pair">
+                <label>幅 <span class="unit-input"><input id="widthInput" type="number" min="320" max="4096" value="1200" /><b>PX</b></span></label>
+                <span class="cross">×</span>
+                <label>高さ <span class="unit-input"><input id="heightInput" type="number" min="320" max="4096" value="1200" /><b>PX</b></span></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>形状</legend>
+              <label class="range-control">
+                <span>個数 <output id="countOutput">14</output></span>
+                <input id="countInput" type="range" min="3" max="40" value="14" />
+              </label>
+              <label class="range-control">
+                <span>大きさ <output id="sizeOutput">中</output></span>
+                <input id="sizeInput" type="range" min="30" max="220" value="110" />
+              </label>
+              <label class="range-control">
+                <span>外側への配置 <output id="edgeOutput">72%</output></span>
+                <input id="edgeInput" type="range" min="0" max="100" value="72" />
+              </label>
+            </fieldset>
+
+            <fieldset>
+              <legend>色</legend>
+              <div class="palette" id="palette">
+                <label style="--swatch:#ff72b7"><input type="color" value="#ff72b7" aria-label="メインピンク" /><span></span></label>
+                <label style="--swatch:#42dff1"><input type="color" value="#42dff1" aria-label="メインブルー" /><span></span></label>
+                <label style="--swatch:#cf5bea"><input type="color" value="#cf5bea" aria-label="メインパープル" /><span></span></label>
+                <label style="--swatch:#ffe814"><input type="color" value="#ffe814" aria-label="メインイエロー" /><span></span></label>
+                <label style="--swatch:#ffab12"><input type="color" value="#ffab12" aria-label="メインオレンジ" /><span></span></label>
+              </div>
+              <label class="toggle-row">
+                <span><b>背景を透過</b><small>透過PNGとして保存します</small></span>
+                <input id="transparentInput" type="checkbox" checked />
+                <i aria-hidden="true"></i>
+              </label>
+              <label class="background-color" id="backgroundColorRow">
+                <span>背景色</span>
+                <input id="backgroundInput" type="color" value="#fff8ef" />
+              </label>
+            </fieldset>
+          </form>
+        </aside>
+
+        <section class="preview-panel" aria-label="プレビュー">
+          <div class="preview-toolbar">
+            <div>
+              <b>プレビュー</b>
+              <span id="dimensionLabel">1200 × 1200 PX</span>
+            </div>
+            <button type="button" id="refreshButton" class="icon-button" aria-label="再生成" title="再生成">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 1 0-2.4 6M20 4v7h-7"/></svg>
+            </button>
+          </div>
+          <div class="canvas-stage" id="canvasStage">
+            <div class="canvas-wrap"><canvas id="artCanvas" width="1200" height="1200"></canvas></div>
+          </div>
+          <div class="actionbar">
+            <div class="seed-control">
+              <span>シード</span>
+              <input id="seedInput" type="text" value="PS-000000" maxlength="24" aria-label="シード値" spellcheck="false" />
+              <button type="button" id="copySeedButton" aria-label="シードをコピー" title="シードをコピー">
+                <svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+              </button>
+            </div>
+            <button type="button" id="downloadButton" class="download-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+              個別PNGを表示
+            </button>
+          </div>
+          <aside class="asset-drawer" id="assetDrawer" aria-label="個別ポリゴン素材" aria-hidden="true">
+            <header>
+              <div><h2>個別PNG</h2></div>
+              <button type="button" id="closeAssetsButton" aria-label="閉じる">×</button>
+            </header>
+            <p>保存ボタンを押すと、各ポリゴンを透過PNG（512 × 512px）で保存できます。</p>
+            <div class="asset-grid" id="assetGrid"></div>
+          </aside>
+        </section>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">Copied</div>
+    <script src="./app.js"></script>
+  </body>
+</html>
