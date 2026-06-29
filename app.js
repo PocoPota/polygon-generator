@@ -23,6 +23,7 @@ const els = {
   copySeed: document.querySelector('#copySeedButton'),
   toast: document.querySelector('#toast'),
   paletteInputs: [...document.querySelectorAll('#palette input')],
+  colorModes: [...document.querySelectorAll('input[name="colorMode"]')],
   presets: [...document.querySelectorAll('.preset')],
 };
 
@@ -99,7 +100,7 @@ function fillFace(context, points, colorA, colorB) {
   context.fill();
 }
 
-function drawCrystal(context, rand, x, y, radius, rotation, color, opacity) {
+function drawCrystal(context, rand, x, y, radius, rotation, colors, opacity) {
   context.save();
   context.translate(x, y);
   context.rotate(rotation);
@@ -113,18 +114,19 @@ function drawCrystal(context, rand, x, y, radius, rotation, color, opacity) {
     { x: radius * skew, y: -radius * tall },
     { x: radius * (skew * .35 + (rand() - .5) * .12), y: radius * (.03 + rand() * .12) },
   ];
+  const [colorA, colorB = colorA, colorC = colorA] = colors;
 
   context.shadowColor = 'rgba(28,20,18,.12)';
   context.shadowBlur = radius * .18;
   context.shadowOffsetY = radius * .1;
-  fillFace(context, [points[0], points[2], points[3]], mix(color, '#ffffff', .18), mix(color, '#24102d', .12));
+  fillFace(context, [points[0], points[2], points[3]], mix(colorA, '#ffffff', .14), mix(colorB, '#24102d', .08));
   context.shadowColor = 'transparent';
-  fillFace(context, [points[2], points[1], points[3]], mix(color, '#ffffff', .58), mix(color, '#ffffff', .04));
-  fillFace(context, [points[0], points[3], points[1]], mix(color, '#21072e', .22), mix(color, '#ffffff', .38));
+  fillFace(context, [points[2], points[1], points[3]], mix(colorB, '#ffffff', .42), mix(colorC, '#ffffff', .03));
+  fillFace(context, [points[0], points[3], points[1]], mix(colorC, '#21072e', .14), mix(colorA, '#ffffff', .3));
 
   if (rand() > .44) {
     const tip = { x: points[2].x + radius * (.28 + rand() * .26), y: points[2].y + radius * (.22 + rand() * .14) };
-    fillFace(context, [points[2], tip, points[1]], mix(color, '#ffffff', .72), mix(color, '#ffffff', .12));
+    fillFace(context, [points[2], tip, points[1]], mix(colorA, '#ffffff', .62), mix(colorC, '#ffffff', .08));
   }
 
   context.restore();
@@ -146,6 +148,7 @@ function draw() {
 
   const rand = randomFromSeed(seed);
   const colors = els.paletteInputs.map(input => input.value);
+  const colorMode = els.colorModes.find(input => input.checked)?.value || 'multi';
   const count = Number(els.count.value);
   const baseSize = Number(els.size.value) / 1200 * Math.min(width, height);
   const edgeBias = Number(els.edge.value) / 100;
@@ -154,12 +157,21 @@ function draw() {
   for (let i = 0; i < count; i++) {
     const radius = baseSize * (.55 + rand() * .9);
     const point = pointOnEdge(rand, width, height, edgeBias, radius);
-    const color = colors[Math.floor(rand() * colors.length)];
+    const firstIndex = Math.floor(rand() * colors.length);
+    const firstColor = colors[firstIndex];
+    const remainingColors = colors.filter((_, index) => index !== firstIndex);
+    const secondIndex = Math.floor(rand() * remainingColors.length);
+    const secondColor = remainingColors[secondIndex] || firstColor;
+    const thirdChoices = remainingColors.filter((_, index) => index !== secondIndex);
+    const thirdColor = thirdChoices[Math.floor(rand() * thirdChoices.length)] || secondColor;
+    const polygonColors = colorMode === 'multi'
+      ? [firstColor, secondColor, thirdColor]
+      : [firstColor, firstColor, firstColor];
     const rotation = rand() * Math.PI * 2;
     const opacity = .78 + rand() * .22;
     const shapeSeed = `${seed}-POLY-${i + 1}`;
-    generatedItems.push({ color, rotation, shapeSeed });
-    drawCrystal(ctx, randomFromSeed(shapeSeed), point.x, point.y, radius, rotation, color, opacity);
+    generatedItems.push({ colors: polygonColors, rotation, shapeSeed });
+    drawCrystal(ctx, randomFromSeed(shapeSeed), point.x, point.y, radius, rotation, polygonColors, opacity);
   }
 
   els.countOutput.value = count;
@@ -178,7 +190,7 @@ function renderSingleAsset(item, targetCanvas) {
   targetCanvas.height = size;
   const context = targetCanvas.getContext('2d');
   context.clearRect(0, 0, size, size);
-  drawCrystal(context, randomFromSeed(item.shapeSeed), size / 2, size / 2, 150, item.rotation, item.color, 1);
+  drawCrystal(context, randomFromSeed(item.shapeSeed), size / 2, size / 2, 150, item.rotation, item.colors, 1);
 }
 
 function renderAssetGrid() {
